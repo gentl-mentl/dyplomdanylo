@@ -71,6 +71,8 @@ let countries = [
     },
 ];
 
+const chats = [];
+
 const bot = new TelegramBot(token, {
     polling: true
 });
@@ -98,71 +100,6 @@ const insertButtons = (data) => {
     }
 };
 
-bot.onText(/\/admin/, async (msg) => {
-    const buttons = {
-        reply_markup: JSON.stringify({
-            inline_keyboard: [
-                [{
-                    text: showCorrectAnswer ? 'Приховати правильну відповідь' : 'Відображати правильну відповідь',
-                    callback_data: `{"setVisibleCorrectAnswer": ${showCorrectAnswer ? '"false"' : '"true"'}}`
-                }],
-                [{
-                    text: 'Додати країну',
-                    callback_data: '{"addCountryHelp": "true"}'
-                }],
-                [{
-                    text: 'Видалити країну',
-                    callback_data: '{"removeCountryHelp": "true"}'
-                }],
-                [{
-                    text: 'Продовжити',
-                    callback_data: '{"continueGame": "true"}'
-                }]
-            ]
-        })
-    };
-    await bot.sendMessage(msg.chat.id, `Адмінка:`, buttons );
-});
-
-bot.onText(/\/score/, async (msg) => {
-    await bot.sendMessage(msg.chat.id, `Ваші бали: ${globalScopeGame.getScore()}` );
-});
-
-bot.onText(/\/addCountry/, async (msg) => {
-    const parseMessage = msg.text.split(' ');
-
-    const newCountry = parseMessage[1];
-    const newCountryFlag = parseMessage[2];
-
-    if (!newCountry || !newCountryFlag) {
-        await bot.sendMessage(msg.chat.id, 'Ви ввели не вірні дані. Формат повинен бути: /addCountry Україна https://upload.wikimedia.org/wikipedia/commons/4/49/Flag_of_Ukraine.svg' );
-    } else {
-        countries.push({
-            name: newCountry,
-            flag: newCountryFlag
-        });
-    }
-});
-
-bot.onText(/\/removeCountry/, async (msg) => {
-    const parseMessage = msg.text.split(' ');
-
-    const countryToRemove = parseMessage[1];
-
-    if (!countryToRemove) {
-        await bot.sendMessage(msg.chat.id, 'Ви ввели не вірні дані. Формат повинен бути: /removeCountry Росія' );
-    } else {
-        const findCountry = countries.find(item => item.name === countryToRemove);
-
-        if (!findCountry) {
-            return bot.sendMessage(msg.chat.id, 'Країну не знайдено, можливо ви помилилсь. Нагадування: чутливість до реєстру (case sensitivity)' );
-        }
-
-        countries = countries.filter(country => country !== findCountry)
-    }
-});
-
-
 class Game {
     chatId = null;
     countryObject = null;
@@ -177,12 +114,9 @@ class Game {
         return this.chatId;
     }
 
-    async start (chatId) {
-        if (!this.chatId) {
-            this.chatId = chatId;
-            if (!this.chatId)
-                throw new Error('chatId is not defined');
-        }
+    async start () {
+        if (!this.chatId)
+            throw new Error('chatId is not defined');
 
         this.countryObject = Game.getRandomCountry({});
 
@@ -253,73 +187,144 @@ class Game {
     }
 }
 
-
-const globalScopeGame = new Game();
-
 bot.onText(/\/start/, async (msg) => {
-    await globalScopeGame.start(msg.chat.id);
-});
+    chats.push(msg.chat.id);
 
-bot.on('callback_query', async (callbackQuery) => {
-    const data = JSON.parse(callbackQuery.data);
-    const msg = callbackQuery.message;
-    const opts = {
-        chat_id: msg.chat.id,
-        message_id: msg.message_id,
-    };
+    const globalScopeGame = new Game(msg.chat.id);
 
-    const correctAnswer = globalScopeGame.getCorrectCountryName();
-    if (data.answer) {
-        if (globalScopeGame.getCounter() >= 10) {
-            return null;
-        }
-        if (correctAnswer === data.answer) {
-            // await bot.editMessageText('Вірно!', opts);
-            await bot.sendMessage(msg.chat.id, 'Вірно!');
-            globalScopeGame.increaseScore();
-        } else {
-            // await bot.editMessageText('Не вірно! Спробуйте ще раз', opts);
-            await bot.sendMessage(msg.chat.id, `Не вірно! ${showCorrectAnswer ? 'Правильна відповідь: ' + correctAnswer : '' } `);
-        }
-        globalScopeGame.increaseCounter();
-        await globalScopeGame.start(msg.chat.id);
-    }
-    if (data.setVisibleCorrectAnswer !== null) {
-        showCorrectAnswer = !!data.setVisibleCorrectAnswer;
-        console.log(showCorrectAnswer);
-        console.log(typeof showCorrectAnswer);
-    }
-    if (data.again) {
-        await globalScopeGame.startAgain(msg.chat.id);
-    }
-    if (data.addCountryHelp) {
-        await bot.sendMessage(msg.chat.id, 'Для додання нової країни формат повинен бути ( Без скобок []! ): /addCountry [назва країни] [посилання на фото прапора]' );
-    }
-    if (data.removeCountryHelp) {
-        await bot.sendMessage(msg.chat.id, 'Для видалення країни формат повинен бути ( Без скобок []! ): /removeCountry [назва країни]' );
-    }
-    if (data.continueGame) {
-        await globalScopeGame.start(msg.chat.id);
-    }
+    await globalScopeGame.start();
 
-    if (globalScopeGame.getCounter() >= 10) {
+    console.log('CHAT_IDS', chats);
+
+    bot.onText(/\/admin/, async (msg) => {
         const buttons = {
             reply_markup: JSON.stringify({
                 inline_keyboard: [
                     [{
-                        text: 'Почати заново',
-                        callback_data: '{"again": "true"}'
+                        text: showCorrectAnswer ? 'Приховати правильну відповідь' : 'Відображати правильну відповідь',
+                        callback_data: `{"setVisibleCorrectAnswer": ${showCorrectAnswer ? '"false"' : '"true"'}}`
+                    }],
+                    [{
+                        text: 'Додати країну',
+                        callback_data: '{"addCountryHelp": "true"}'
+                    }],
+                    [{
+                        text: 'Видалити країну',
+                        callback_data: '{"removeCountryHelp": "true"}'
+                    }],
+                    [{
+                        text: 'Продовжити',
+                        callback_data: '{"continueGame": "true"}'
                     }]
                 ]
             })
         };
-        await bot.sendMessage(msg.chat.id, `Ви пройшли 10 тестів, вірних з яких ${globalScopeGame.getScore()}`, buttons );
-    }
+        await bot.sendMessage(msg.chat.id, `Адмінка:`, buttons );
+    });
+
+    bot.onText(/\/score/, async (msg) => {
+        await bot.sendMessage(msg.chat.id, `Ваші бали: ${globalScopeGame.getScore()}` );
+    });
+
+    bot.onText(/\/addCountry/, async (msg) => {
+        const parseMessage = msg.text.split(' ');
+
+        const newCountry = parseMessage[1];
+        const newCountryFlag = parseMessage[2];
+
+        if (!newCountry || !newCountryFlag) {
+            await bot.sendMessage(msg.chat.id, 'Ви ввели не вірні дані. Формат повинен бути: /addCountry Україна https://upload.wikimedia.org/wikipedia/commons/4/49/Flag_of_Ukraine.svg' );
+        } else {
+            countries.push({
+                name: newCountry,
+                flag: newCountryFlag
+            });
+        }
+    });
+
+    bot.onText(/\/removeCountry/, async (msg) => {
+        const parseMessage = msg.text.split(' ');
+
+        const countryToRemove = parseMessage[1];
+
+        if (!countryToRemove) {
+            await bot.sendMessage(msg.chat.id, 'Ви ввели не вірні дані. Формат повинен бути: /removeCountry Росія' );
+        } else {
+            const findCountry = countries.find(item => item.name === countryToRemove);
+
+            if (!findCountry) {
+                return bot.sendMessage(msg.chat.id, 'Країну не знайдено, можливо ви помилилсь. Нагадування: чутливість до реєстру (case sensitivity)' );
+            }
+
+            countries = countries.filter(country => country !== findCountry)
+        }
+    });
+
+    bot.on('callback_query', async (callbackQuery) => {
+        const chat_instance = callbackQuery.from.id;
+        const data = JSON.parse(callbackQuery.data);
+        const localMsg = callbackQuery.message;
+        const opts = {
+            chat_id: chat_instance,
+            message_id: localMsg.message_id,
+        };
+
+        if (chat_instance === msg.chat.id) {
+            const correctAnswer = globalScopeGame.getCorrectCountryName();
+            if (data.answer) {
+                if (globalScopeGame.getCounter() >= 10) {
+                    return null;
+                }
+                if (correctAnswer === data.answer) {
+                    // await bot.editMessageText('Вірно!', opts);
+                    await bot.sendMessage(chat_instance, 'Вірно!');
+                    globalScopeGame.increaseScore();
+                } else {
+                    // await bot.editMessageText('Не вірно! Спробуйте ще раз', opts);
+                    await bot.sendMessage(chat_instance, `Не вірно! ${showCorrectAnswer ? 'Правильна відповідь: ' + correctAnswer : '' } `);
+                }
+                globalScopeGame.increaseCounter();
+                await globalScopeGame.start();
+            }
+            if (data.setVisibleCorrectAnswer !== null || data.setVisibleCorrectAnswer !== undefined) {
+                showCorrectAnswer = !!data.setVisibleCorrectAnswer;
+                console.log(showCorrectAnswer);
+                console.log(typeof showCorrectAnswer);
+            }
+            if (data.again) {
+                await globalScopeGame.startAgain(chat_instance);
+            }
+            if (data.addCountryHelp) {
+                await bot.sendMessage(chat_instance, 'Для додання нової країни формат повинен бути ( Без скобок []! ): /addCountry [назва країни] [посилання на фото прапора]' );
+            }
+            if (data.removeCountryHelp) {
+                await bot.sendMessage(chat_instance, 'Для видалення країни формат повинен бути ( Без скобок []! ): /removeCountry [назва країни]' );
+            }
+            if (data.continueGame) {
+                await globalScopeGame.start(chat_instance);
+            }
+
+            if (globalScopeGame.getCounter() >= 10) {
+                const buttons = {
+                    reply_markup: JSON.stringify({
+                        inline_keyboard: [
+                            [{
+                                text: 'Почати заново',
+                                callback_data: '{"again": "true"}'
+                            }]
+                        ]
+                    })
+                };
+                await bot.sendMessage(chat_instance, `Ви пройшли 10 тестів, вірних з яких ${globalScopeGame.getScore()}`, buttons );
+            }
+        }
+    });
 });
+
 
 var app = express();
 
 app.get('/', function (req, res) {
-  res.send('ok')
+    res.send('ok')
 })
 app.listen(process.env.PORT || 4000);
