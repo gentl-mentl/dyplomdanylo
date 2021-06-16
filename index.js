@@ -4,7 +4,7 @@ const svg2img = require('svg2img');
 const { fill } = require('lodash');
 const util = require('util');
 
-const token = '1852878243:AAFEPW4cVeBDLKBzmAinpsLh8r2lW2ygdz8';
+const token = process.env.BOT_API_KEY;
 
 let countries = [
     {
