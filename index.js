@@ -1,4 +1,6 @@
 const TelegramBot = require('node-telegram-bot-api');
+const express = require('express')
+
 // const { countries } = require('country-flags-svg');
 const svg2img = require('svg2img');
 const { fill } = require('lodash');
@@ -314,3 +316,10 @@ bot.on('callback_query', async (callbackQuery) => {
         await bot.sendMessage(msg.chat.id, `Ви пройшли 10 тестів, вірних з яких ${globalScopeGame.getScore()}`, buttons );
     }
 });
+
+var app = express();
+
+app.get('/', function (req, res) {
+  res.send('ok')
+})
+app.listen(process.env.PORT || 4000);
