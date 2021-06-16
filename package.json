@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.17.1",
+    "express": "4.16.0",
     "convert-svg-to-png": "^0.5.0",
     "country-flags-svg": "^1.1.0",
     "node-telegram-bot-api": "^0.53.0",
