@@ -291,6 +291,7 @@ bot.onText(/\/start/, async (msg) => {
                     // await bot.editMessageText('Не вірно! Спробуйте ще раз', opts);
                     await bot.sendMessage(chat_instance, `Не вірно! ${showCorrectAnswer ? 'Правильна відповідь: ' + correctAnswer : '' } `);
                 }
+                // await bot.sendMessage(chat_instance, `chat_instance: ${chat_instance} chatId: ${msg.chat.id}`);
                 globalScopeGame.increaseCounter();
                 await globalScopeGame.start();
             }
